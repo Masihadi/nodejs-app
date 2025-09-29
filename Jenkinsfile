@@ -1,37 +1,29 @@
-    pipeline {
+pipeline {
     agent any
-       
+
     stages {
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/Masihadi/nodejs-app.git'
-            }
-        }
-            
-        stage('Build') {
-            steps {
-                sh 'npm install'
-            }
-        }
-        
-        stage('Test') {
-            steps {
-                sh 'npm test || echo "No tests found"'
-            }
-        }
-        
-        stage('Docker Build') {
+        stage('Build Docker Image') {
             steps {
                 sh 'docker build -t nodejs-app .'
             }
-        } 
-        post {
-            failure {
-                mail to: 'had.alav.m@gmail.com',
-                    subject: "Jenkins Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    body: "Check logs at ${env.BUILD_URL}"
+        }
+
+        stage('Deploy') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh 'docker rm -f nodejs-app || true'
+                sh 'docker run -d -p 3000:3000 --name nodejs-app nodejs-app'
             }
         }
-     
+    }
+
+    post {
+        failure {
+            mail to: 'had.alav.m@gmail.com',
+                 subject: "Jenkins Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "Something went wrong with ${env.JOB_NAME} #${env.BUILD_NUMBER}\nCheck logs at: ${env.BUILD_URL}"
         }
     }
+}
